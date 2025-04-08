@@ -1,4 +1,4 @@
-matchToken: 0x752fb11bD9C7415BDb2f8f64735991449f0591B2
+matchToken: 0xBC649E21df0fCf476C0eFE5Cb8339FA9f756d7Eb
 matchP: 0xf2267a52A11875b5e7D9089807c954B081D38618 合约名为 MatchP
 已将 0xa93be7581cb37e7fe737350ec3e88f4e06ce6ea4 加入白名单
 除了 matchToken 特指方法,其余为 matchP 方法
