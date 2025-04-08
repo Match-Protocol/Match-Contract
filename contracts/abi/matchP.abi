@@ -488,6 +488,35 @@
 				"internalType": "uint256",
 				"name": "_gameId",
 				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "player1",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "player2",
+				"type": "address"
+			}
+		],
+		"name": "finalScore",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "scores",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_gameId",
+				"type": "uint256"
 			}
 		],
 		"name": "forceGameOver",

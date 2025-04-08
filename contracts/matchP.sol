@@ -315,8 +315,9 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
             require(_stars[i] >= 1 && _stars[i] <= 5, "Stars must be 1-5");
             if (isPlayer[_gameId][msg.sender] == true && _stars[i] < 2) {
                 ratings[msg.sender][_gameId].scores[i] = _stars[i] + 2; // ratings[msg.sender].scores[i]
+            } else {
+                ratings[msg.sender][_gameId].scores[i] = _stars[i]; // ratings[msg.sender].scores[i]
             }
-            ratings[msg.sender][_gameId].scores[i] = _stars[i]; // ratings[msg.sender].scores[i]
         }
 
         ratings[msg.sender][_gameId].rated = true;
@@ -350,11 +351,28 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
     function getAllScore(
         uint256 _gameId
     ) public view returns (uint8[] memory Scores1) {
-        require(ratings[msg.sender][_gameId].rated == true, "not rated");
+        require(games[_gameId].exist == 1, "game does not exist");
         Scores1 = new uint8[](4);
         for (uint256 i = 0; i < 4; i++) {
             Scores1[i] = getCompressedDimensionScore(_gameId, i);
         }
         return Scores1;
+    }
+
+    function finalScore(
+        uint256 _gameId,
+        address player1,
+        address player2
+    ) public view returns (uint256[] memory scores) {
+        require(games[_gameId].exist == 1, "game does not exist");
+        scores = new uint256[](2);
+        if (games[_gameId].isSettled == 1) {
+            scores[0] = playerStakeBalance[_gameId][player1];
+            scores[1] = playerStakeBalance[_gameId][player2];
+        } else {
+            scores[0] = 0;
+            scores[1] = 0;
+        }
+        return scores;
     }
 }
