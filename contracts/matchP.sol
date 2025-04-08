@@ -14,8 +14,7 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
     uint256 public feeDecimals; // 抽成比例分母
     address public MatchProtocol; // 协议收取match代币地址
     uint256 public _nonce; // 游戏ID计数器，从0开始
-    mapping(uint256 => game) public games; // 改为mapping
-    uint256 public totalVoteScore;
+    mapping(uint256 => game) public games; // mapping optimize gas
     uint256 public startAppend; // limit start time
     uint256 public endAppend; //  limit end time
 
@@ -27,13 +26,20 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
     mapping(address => mapping(uint256 => stakeInfo)) public voterGameStake;
     // 创建赛事的白名单
     mapping(address => bool) public whiteList;
-    // 是否领取了match和积分
-    mapping(address => bool) public isGain;
-    mapping(address => uint256) public voteScores;
+
     // 参赛者列表
     mapping(uint256 => address[]) public Aplayers;
     // 质押/投票者列表
     mapping(uint256 => address[]) public Avoters;
+    //赛事评分
+    // Rating 结构体存四个维度的星级评分（1～5 星）
+    struct Rating {
+        uint8[4] scores;
+        bool rated;
+    }
+    // 用户地址对赛事id的评分信息
+    mapping(address => mapping(uint256 => Rating)) public ratings; // 默認voter都属于rater
+    mapping(address => bool) public isGain;
 
     struct stakeInfo {
         uint256 gameId;
@@ -52,6 +58,7 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     enum ScoreType {
+        // 这个实际上没有用,用来内部自己查看.
         Technical,
         Business,
         Completeness,
@@ -74,6 +81,7 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
     );
     event Settled(uint256 gameId, address winner, uint256 _time);
     event DoNothing(address indexed sender);
+    event Rate(uint256 gameId, uint8[] scores, uint256 _time);
 
     error GameAlreadyOver();
 
@@ -105,7 +113,6 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
         __UUPSUpgradeable_init();
         token = _token;
         _nonce = 1; // 从0开始
-        totalVoteScore = 10000;
         feeRate = 10;
         feeDecimals = 10 ** 2;
         startAppend = st;
@@ -136,11 +143,10 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
 
     function getToken() public returns (bool) {
         require(msg.sender != address(0), "token is zero");
-        require(!isGain[msg.sender], "already gained");
+
         // IERC20(token).transfer(msg.sender, 30);
         require(_getToken(msg.sender), "get token fail");
-        totalVoteScore -= 30;
-        voteScores[msg.sender] = 30;
+
         isGain[msg.sender] = true;
         return true;
     }
@@ -288,7 +294,7 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
         return true;
     }
 
-    // 获取当前游戏总数
+    // 获取当赛事总数
     function getGameCount() public view returns (uint256) {
         return _nonce;
     }
@@ -299,5 +305,53 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
 
     function setEt(uint256 _time) public checkAuthority {
         endAppend = _time;
+    }
+
+    // 进行五星评分
+    function rate(uint256 _gameId, uint8[] calldata _stars) public {
+        require(!ratings[msg.sender][_gameId].rated, "Already rated");
+
+        for (uint i = 0; i < 4; i++) {
+            require(_stars[i] >= 1 && _stars[i] <= 5, "Stars must be 1-5");
+            ratings[msg.sender][_gameId].scores[i] = _stars[i]; // ratings[msg.sender].scores[i]
+        }
+
+        ratings[msg.sender][_gameId].rated = true;
+        Avoters[_gameId].push(msg.sender);
+        emit Rate(_gameId, _stars, block.timestamp);
+    }
+
+    //  获取单个维度对外展示评分
+    function getCompressedDimensionScore(
+        uint256 _gameId,
+        uint dimensionIndex
+    ) public view returns (uint8) {
+        require(dimensionIndex < 4, "Invalid dimension index");
+
+        uint totalScore = 0;
+        uint256 ratersLength = Avoters[_gameId].length;
+        for (uint i = 0; i < ratersLength; i++) {
+            address rater0 = Avoters[_gameId][i];
+            Rating storage r = ratings[rater0][_gameId];
+            totalScore += r.scores[dimensionIndex] * 2; // 星级 × 2 = 实际得分
+        }
+
+        uint maxScore = ratersLength * 10;
+        if (maxScore == 0) return 0;
+
+        // 缩放为 0 ～ 10
+        return uint8((totalScore * 100) / maxScore);
+    }
+
+    // 获取单个赛事所有维度的评分
+    function getAllScore(
+        uint256 _gameId
+    ) public returns (uint8[] memory Scores1) {
+        require(ratings[msg.sender][_gameId].rated = true, "not rated");
+        Scores1 = new uint8[](4);
+        for (uint256 i = 0; i < 4; i++) {
+            Scores1[i] = getCompressedDimensionScore(_gameId, i);
+        }
+        return Scores1;
     }
 }
