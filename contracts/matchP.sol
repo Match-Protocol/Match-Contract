@@ -313,6 +313,9 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
 
         for (uint i = 0; i < 4; i++) {
             require(_stars[i] >= 1 && _stars[i] <= 5, "Stars must be 1-5");
+            if (isPlayer[_gameId][msg.sender] == true && _stars[i] < 2) {
+                ratings[msg.sender][_gameId].scores[i] = _stars[i] + 2; // ratings[msg.sender].scores[i]
+            }
             ratings[msg.sender][_gameId].scores[i] = _stars[i]; // ratings[msg.sender].scores[i]
         }
 
@@ -346,8 +349,8 @@ contract MatchP is OwnableUpgradeable, UUPSUpgradeable {
     // 获取单个赛事所有维度的评分
     function getAllScore(
         uint256 _gameId
-    ) public returns (uint8[] memory Scores1) {
-        require(ratings[msg.sender][_gameId].rated = true, "not rated");
+    ) public view returns (uint8[] memory Scores1) {
+        require(ratings[msg.sender][_gameId].rated == true, "not rated");
         Scores1 = new uint8[](4);
         for (uint256 i = 0; i < 4; i++) {
             Scores1[i] = getCompressedDimensionScore(_gameId, i);
